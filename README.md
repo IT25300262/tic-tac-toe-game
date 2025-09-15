@@ -1,1 +1,5 @@
-# tic_tac_toe-game
+# Tic Tac Toe Game 
+---
+### Technologies
+- Implements in C
+- Users a terminal user interface (TUI)
