@@ -1,0 +1,8 @@
+
+      New Game (Mode 2)     
+Player X -> (0,0)
+Computer -> (2,2)
+Player X -> (1,0)
+Computer -> (0,2)
+Player X -> (2,0)
+Player X wins!

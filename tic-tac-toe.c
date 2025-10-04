@@ -1,26 +1,32 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include "tic-tac-toe.h"
 
-#define EMPTY ' '
+//create dynamic board
+char** createboard(int n) {
+    char **board = (char**)malloc(n * sizeof(char*));
+    for (int i = 0; i < n; i++)
+        board[i] = (char*)malloc(n * sizeof(char));
+    return board;
+}
 
-//All functions
-void Board(char board[10][10], int n);
-void disboard(char board[10][10], int n);
-int checkwin(char board[10][10], int n, char symbol);
-int checkdraw(char board[10][10], int n);
-void playermove(char board[10][10], int n, char symbol);
-void computermove(char board[10][10], int n, char symbol);
+// Free dynamic board
+void freeboard(char** board, int n) {
+    for (int i = 0; i < n; i++)
+        free(board[i]);
+    free(board);
+}
 
 //the board
-void Board(char board[10][10], int n) {
+void Board(char** board, int n) {
     for (int i = 0; i < n; i++)
         for (int j = 0; j < n; j++)
             board[i][j] = EMPTY;
 }
 
 //Display the board  
-void disboard(char board[10][10], int n) {
+void disboard(char** board, int n) {
     printf("\n   ");
     for (int j = 0; j < n; j++) {
         printf(" %d  ", j);
@@ -47,7 +53,7 @@ void disboard(char board[10][10], int n) {
 }
 
 //Check win
-int checkwin(char board[10][10], int n, char s) {
+int checkwin(char** board, int n, char s) {
     for (int i = 0; i < n; i++) {
         int row = 1, column = 1;
         for (int j = 0; j < n; j++) {
@@ -65,21 +71,28 @@ int checkwin(char board[10][10], int n, char s) {
 }
 
 //Check draw 
-int checkdraw(char board[10][10], int n) {
+int checkdraw(char** board, int n) {
     for (int i = 0; i < n; i++)
         for (int j = 0; j < n; j++)
             if (board[i][j] == EMPTY) return 0;
     return 1;
 }
 //Player Move
-void playermove(char board[10][10], int n, char symbol) {
+void playermove(char** board, int n, char symbol) {
     int row, column;
     while (1) {
         printf("Player %c - enter row and column (0-%d): ", symbol, n - 1);
         scanf("%d %d", &row, &column);
         if (row >= 0 && row < n && column >= 0 && column < n && board[row][column] == EMPTY) {
             board[row][column] = symbol;
-            break;
+          
+	    FILE *fp = fopen("results.txt", "a");
+            if (fp) {
+                fprintf(fp, "Player %c -> (%d,%d)\n", symbol, row, column);
+                fclose(fp);
+            }
+	  
+	    break;
         } else {
             printf("Invalid move,Try again.\n");
         }
@@ -87,7 +100,7 @@ void playermove(char board[10][10], int n, char symbol) {
 }
 
 //Random move for pc
-void computermove(char board[10][10], int n, char symbol) {
+void computermove(char** board, int n, char symbol) {
     int row, column;
     do {
         row = rand() % n;
@@ -96,53 +109,82 @@ void computermove(char board[10][10], int n, char symbol) {
 
     board[row][column] = symbol;
     printf("Computer played at (%d, %d)\n", row, column);
+ 
+    FILE *fp = fopen("results.txt", "a");
+    if (fp) {
+        fprintf(fp, "Computer -> (%d,%d)\n", row, column);
+        fclose(fp);
+    }
+}
+//save file
+void savegameresult(const char* filename, const char* result) {
+    FILE *fp = fopen(filename, "a");
+    if (fp) {
+        fprintf(fp, "%s\n", result);
+        fclose(fp);
+    }
 }
 
 //Main Game 
 int main() {
     srand(time(NULL));
     int n, mode;
-    char board[10][10];
 
     printf("Enter board size (3-10): ");
     scanf("%d", &n);
-    if (n < 3 || n > 10) {
-        printf("Invalid size\n");
+    if (n < 3 || n > 10)
         return 0;
-    }
+   
     printf("Select Mode:\n");
     printf("1 - User vs User\n");
     printf("2 - User vs Computer\n");
+    printf("3 - Three Player\n");
     scanf("%d", &mode);
-    Board(board, n);
-    char player = 'X';
+
+    FILE *fp = fopen("results.txt", "a");
+    if (fp) {
+       fprintf(fp, "\n      New Game (Mode %d)     \n", mode);
+       fclose(fp);
+    }
+
+    char **board = createboard(n);
+    Board(board,n);
+
+    char players[3] = {'X' , 'O' , 'Z'};
+    int turn = 0;
+
     while (1) {
         disboard(board, n);
-
-        if (mode == 1 || (mode == 2 && player == 'X')) {
-            playermove(board, n, player);
-        } else {
+        
+	char player = (mode == 3) ? players[turn % 3] : players[turn % 2];
+        if(mode == 2 && player == 'O')
             computermove(board, n, player);
-        }
-
+         else
+            playermove(board, n, player);
+        
         if (checkwin(board, n, player)) {
             disboard(board, n);
-            if (mode == 2 && player == 'O')
+            if (mode == 2 && player == 'O'){
                 printf("Computer wins\n");
-            else
-                printf("Player %c wins\n", player);
+	        savegameresult("results.txt", "Computer wins!");
+	}  else{
+                printf("Player %c wins!\n", player);
+                char res[50]; sprintf(res, "Player %c wins!", player);
+                savegameresult("results.txt", res);
+            }
             break;
-        }
+	}
 
         if (checkdraw(board, n)) {
             disboard(board, n);
             printf("Game is a draw!\n");
+	    savegameresult("results.txt", "Draw!");
             break;
         }
 
-        //Switch turn
-        player = (player == 'X') ? 'O' : 'X';
+        //Next player turn
+        turn++;
     }
-
+    freeboard(board, n);
     return 0;
 }
